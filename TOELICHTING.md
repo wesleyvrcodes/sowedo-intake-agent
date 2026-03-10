@@ -1,37 +1,35 @@
 # Toelichting — SOWEDO Intake Agent
 
-## Wat ik gebouwd heb
+## Wat heb ik gebouwd?
 
-Een AI-chatbot die intake gesprekken voert met potentiële klanten van SOWEDO. De agent stelt stap voor stap vragen over het bedrijf, de pijnpunten en wat ze willen bereiken met AI. Na het gesprek genereert hij automatisch een gestructureerde analyse met scores en aanbevelingen.
+Een chatbot die intake gesprekken voert met potentiële klanten van SOWEDO. De bot stelt vragen over het bedrijf, de problemen en wat ze willen bereiken met AI. Aan het einde krijg je automatisch een samenvatting met scores — zo weet je meteen welke leads het meest interessant zijn.
 
-Daarnaast is er een Lead Dashboard (`/dashboard`) waar alle afgeronde intakes binnenkomen, gesorteerd op lead score. Zo zie je in één oogopslag welke leads het meest kansrijk zijn.
+Er zit ook een dashboard bij (`/dashboard`) waar alle afgeronde gesprekken terechtkomen, gesorteerd op hoe kansrijk de lead is.
 
-## Tech stack & tools
+## Welke tools heb ik gebruikt?
 
-- **Blazor Server (.NET 8)** — real-time UI met SignalR, geen losse frontend nodig
-- **OpenRouter API** (GPT-4o-mini) — snel, goedkoop, prima kwaliteit voor intake gesprekken
-- **Streaming responses** — antwoorden komen woord voor woord binnen, voelt veel natuurlijker
-- **AI tools gebruikt**: Claude voor het bouwen
+- **Claude** — voor het bouwen van de code
+- **.NET Blazor** — het framework waar de app in draait
+- **OpenRouter + GPT-4o-mini** — het AI-model dat de gesprekken voert
 
-## Bewuste keuzes
+## Welke keuzes heb ik gemaakt?
 
-- **Blazor Server i.p.v. een SPA framework** — één codebase, C# end-to-end, sneller te bouwen. Voor een PoC is dit ideaal.
-- **In-memory storage** — geen database opgezet. Voor een proof of concept is dit prima; bij productie zou ik een database toevoegen.
-- **GPT-4o-mini via OpenRouter** — goede balans tussen kwaliteit en kosten. OpenRouter maakt het makkelijk om later van model te wisselen zonder code aan te passen.
-- **Gestructureerde JSON output via prompt** — de agent sluit het gesprek af met een JSON samenvatting die automatisch geparsed wordt. Simpel en effectief.
+- **Eén project, één taal** — alles in C#, geen losse frontend. Simpel te onderhouden.
+- **Streaming antwoorden** — de bot typt woord voor woord, zoals je gewend bent van ChatGPT. Voelt veel natuurlijker dan wachten op een heel blok tekst.
+- **Geen database** — gesprekken worden in het geheugen bewaard. Voor een demo is dat prima, voor productie zou je dat aanpassen.
+- **GPT-4o-mini** — snel en goedkoop genoeg voor intake gesprekken. Via OpenRouter kan je makkelijk een ander model kiezen zonder iets aan te passen.
 
-## Veiligheid
+## Hoe zit het met veiligheid?
 
-- **API keys** staan in `appsettings.Development.json` (git-ignored) of als environment variable — nooit hardcoded in broncode
-- **Server-side input validatie** — maximaal 2000 karakters per bericht, ook als je de client-side check omzeilt
-- **Rate limiting** — max 15 berichten per sessie + 3 seconden cooldown tussen berichten
-- **Prompt injection bescherming** — system prompt instrueert de agent om manipulatiepogingen te negeren
-- **HTTPS redirect** in productie + HSTS headers
+- API keys staan **niet** in de code — ze worden apart geladen en staan niet op GitHub
+- Gebruikers kunnen max **2000 tekens** per bericht sturen (ook als je de frontend omzeilt)
+- Max **15 berichten** per gesprek + een pauze van 3 seconden tussen berichten
+- De bot negeert pogingen om hem te manipuleren (prompt injection)
+- HTTPS wordt afgedwongen in productie
 
-## Wat ik zou verbeteren met meer tijd
+## Wat zou ik verbeteren met meer tijd?
 
-- **Persistente opslag** — SQLite of PostgreSQL zodat intakes een restart overleven
-- **Authenticatie** op het dashboard — nu kan iedereen bij `/dashboard`
-- **Export functionaliteit** — intakes als PDF of CSV downloaden
-- **Robuustere prompt injection bescherming** — input filtering naast de prompt-instructies
-- **Gespreksgeschiedenis** terugkijken vanuit het dashboard (de transcripts worden al opgeslagen, alleen de UI mist nog)
+- Een database zodat gesprekken bewaard blijven na een herstart
+- Inloggen op het dashboard zodat niet iedereen erbij kan
+- Gesprekken kunnen exporteren als PDF
+- Screenshots/demo video toevoegen
