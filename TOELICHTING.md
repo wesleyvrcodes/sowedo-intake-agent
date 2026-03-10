@@ -6,6 +6,8 @@ Een chatbot die intake gesprekken voert met potentiële klanten van SOWEDO. De b
 
 Er zit ook een dashboard bij (`/dashboard`) waar alle afgeronde gesprekken terechtkomen, gesorteerd op hoe kansrijk de lead is.
 
+<img width="1242" height="1036" alt="Screenshot 2026-03-10 at 08 02 26" src="https://github.com/user-attachments/assets/c7fb1333-43fe-4525-a3ac-b6039eddc09a" />
+
 ## Welke tools heb ik gebruikt?
 
 - **Claude** — voor het bouwen van de code
@@ -27,9 +29,17 @@ Er zit ook een dashboard bij (`/dashboard`) waar alle afgeronde gesprekken terec
 - De bot negeert pogingen om hem te manipuleren (prompt injection)
 - HTTPS wordt afgedwongen in productie
 
+<img width="1918" height="957" alt="Screenshot 2026-03-10 at 08 01 46" src="https://github.com/user-attachments/assets/4ba30625-0ad3-4b3c-a80b-9762dea0b933" />
+
 ## Wat zou ik verbeteren met meer tijd?
 
 - Een database zodat gesprekken bewaard blijven na een herstart
 - Inloggen op het dashboard zodat niet iedereen erbij kan
 - Gesprekken kunnen exporteren als PDF
-- Screenshots/demo video toevoegen
+- Een kleine chatbot zoals Sowi hoort niet op een grote pagina net zoals dit te werken, chatbots worden meestal rechtsonderin een kleine modal getoont.
+
+## Demo
+
+Hieronder vind u een korte demo video die Sowi (de chatbot van SOWEDO) uitlegd! 
+
+https://files.fm/u/95d8x3dkpb#/view/ymcs5cf8p2
