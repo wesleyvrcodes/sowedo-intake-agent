@@ -1,0 +1,243 @@
+@page "/"
+@rendermode InteractiveServer
+@using System.Text
+@using System.Text.Json
+@using SowedoIntakeAgent.Models
+@using SowedoIntakeAgent.Services
+@inject OpenAiService AiService
+@inject IntakeStore Store
+@inject IJSRuntime JS
+
+<PageTitle>SOWEDO — AI Intake</PageTitle>
+
+<div class="chat-layout">
+    <header class="chat-header">
+        <img src="images/logo.svg" alt="SOWEDO" class="logo" />
+        <span class="header-subtitle">AI Intake</span>
+    </header>
+
+    <div class="chat-messages" id="chatMessages">
+        @foreach (var msg in _displayMessages)
+        {
+            <div class="message-row @(msg.Role == "assistant" ? "assistant" : "user")">
+                <div class="avatar @(msg.Role == "assistant" ? "avatar-assistant" : "avatar-user")">
+                    @(msg.Role == "assistant" ? "S" : "U")
+                </div>
+                <div class="bubble @(msg.Role == "assistant" ? "bubble-assistant" : "bubble-user")">
+                    @msg.Content
+                </div>
+            </div>
+        }
+
+        @if (_isStreaming && !string.IsNullOrEmpty(_streamBuffer))
+        {
+            <div class="message-row assistant">
+                <div class="avatar avatar-assistant">S</div>
+                <div class="bubble bubble-assistant">@_streamBuffer</div>
+            </div>
+        }
+        else if (_isThinking)
+        {
+            <div class="message-row assistant">
+                <div class="avatar avatar-assistant">S</div>
+                <div class="bubble bubble-assistant typing-indicator">
+                    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="chat-input-area">
+        @if (_sessionEnded)
+        {
+            <div class="session-ended">Het gesprek is afgerond. <a href="/">Nieuw gesprek starten</a></div>
+        }
+        else
+        {
+            <div class="input-row">
+                <textarea @ref="_inputRef" @bind="_userInput" @bind:event="oninput"
+                          @onkeydown="HandleKeyDown"
+                          maxlength="2000" rows="1" placeholder="Typ uw bericht..."
+                          disabled="@(_isStreaming || _isThinking)"></textarea>
+                <button class="send-btn" @onclick="SendMessage"
+                        disabled="@(string.IsNullOrWhiteSpace(_userInput) || _isStreaming || _isThinking)">
+                    ➤
+                </button>
+            </div>
+        }
+    </div>
+
+    <div class="chat-footer">
+        <span>Powered by SOWEDO · AI-gedreven intake</span>
+    </div>
+</div>
+
+@code {
+    private List<ChatMessage> _chatHistory = new();
+    private List<ChatMessage> _displayMessages = new();
+    private string _userInput = "";
+    private string _streamBuffer = "";
+    private bool _isStreaming;
+    private bool _isThinking;
+    private bool _sessionEnded;
+    private ElementReference _inputRef;
+
+    // Rate limiting
+    private int _messageCount;
+    private const int MaxMessages = 15;
+    private DateTime _lastMessageTime = DateTime.MinValue;
+    private const int CooldownSeconds = 3;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Send initial welcome
+            await GetAssistantResponse();
+        }
+        await ScrollToBottom();
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try { await JS.InvokeVoidAsync("eval", "document.getElementById('chatMessages')?.scrollTo({top:999999})"); }
+        catch { }
+    }
+
+    private async Task HandleKeyDown(Microsoft.AspNetCore.Components.Web.KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SendMessage();
+        }
+    }
+
+    private async Task SendMessage()
+    {
+        var text = _userInput?.Trim();
+        if (string.IsNullOrEmpty(text) || _isStreaming || _isThinking || _sessionEnded) return;
+
+        // Server-side input validatie
+        if (text.Length > 2000)
+            text = text[..2000];
+
+        // Rate limit
+        if (_messageCount >= MaxMessages)
+        {
+            _displayMessages.Add(new ChatMessage { Role = "assistant", Content = "Het maximale aantal berichten voor dit gesprek is bereikt. Ons team neemt contact met u op!" });
+            _sessionEnded = true;
+            StateHasChanged();
+            return;
+        }
+        if ((DateTime.UtcNow - _lastMessageTime).TotalSeconds < CooldownSeconds)
+        {
+            return;
+        }
+
+        _messageCount++;
+        _lastMessageTime = DateTime.UtcNow;
+        _userInput = "";
+
+        var userMsg = new ChatMessage { Role = "user", Content = text };
+        _chatHistory.Add(userMsg);
+        _displayMessages.Add(userMsg);
+        StateHasChanged();
+
+        await GetAssistantResponse();
+    }
+
+    private async Task GetAssistantResponse()
+    {
+        _isThinking = true;
+        _streamBuffer = "";
+        StateHasChanged();
+        await Task.Delay(1); // let UI update
+
+        var fullResponse = new StringBuilder();
+        _isThinking = false;
+        _isStreaming = true;
+        StateHasChanged();
+
+        await foreach (var chunk in AiService.StreamChatAsync(_chatHistory))
+        {
+            fullResponse.Append(chunk);
+            // Show content but strip summary markers in real-time
+            _streamBuffer = StripSummary(fullResponse.ToString());
+            StateHasChanged();
+            await Task.Delay(1);
+        }
+
+        _isStreaming = false;
+        var fullText = fullResponse.ToString();
+        _streamBuffer = "";
+
+        // Check for summary markers
+        var summaryParsed = TryParseSummary(fullText);
+        var displayText = StripSummary(fullText).Trim();
+
+        if (!string.IsNullOrEmpty(displayText))
+        {
+            var assistantMsg = new ChatMessage { Role = "assistant", Content = displayText };
+            _chatHistory.Add(new ChatMessage { Role = "assistant", Content = fullText });
+            _displayMessages.Add(assistantMsg);
+        }
+
+        if (summaryParsed != null)
+        {
+            // Save to IntakeStore
+            Store.Add(IntakeResult.FromSummary(summaryParsed, _chatHistory.ToList()));
+            _sessionEnded = true;
+        }
+
+        StateHasChanged();
+    }
+
+    private string StripSummary(string text)
+    {
+        var startIdx = text.IndexOf("===SAMENVATTING_START===");
+        if (startIdx < 0) return text;
+
+        var endMarker = "===SAMENVATTING_EIND===";
+        var endIdx = text.IndexOf(endMarker);
+        if (endIdx < 0)
+        {
+            // Marker started but not ended yet - show only text before it
+            return text[..startIdx].Trim();
+        }
+
+        var before = text[..startIdx].Trim();
+        var after = text[(endIdx + endMarker.Length)..].Trim();
+        return (before + (string.IsNullOrEmpty(after) ? "" : "\n" + after)).Trim();
+    }
+
+    private IntakeSummary? TryParseSummary(string text)
+    {
+        var startMarker = "===SAMENVATTING_START===";
+        var endMarker = "===SAMENVATTING_EIND===";
+
+        var startIdx = text.IndexOf(startMarker);
+        if (startIdx < 0) return null;
+        var endIdx = text.IndexOf(endMarker);
+        if (endIdx < 0) return null;
+
+        var jsonStr = text[(startIdx + startMarker.Length)..endIdx].Trim();
+        // Strip markdown fences
+        if (jsonStr.StartsWith("```"))
+        {
+            var nl = jsonStr.IndexOf('\n');
+            if (nl > 0) jsonStr = jsonStr[(nl + 1)..];
+            if (jsonStr.EndsWith("```")) jsonStr = jsonStr[..^3];
+            jsonStr = jsonStr.Trim();
+        }
+
+        try
+        {
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            return JsonSerializer.Deserialize<IntakeSummary>(jsonStr, opts);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+}

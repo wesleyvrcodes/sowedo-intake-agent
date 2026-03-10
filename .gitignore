@@ -1,0 +1,12 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.vs/
+
+## Secrets — NOOIT committen
+appsettings.Development.json
+appsettings.*.local.json
+*.env

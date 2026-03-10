@@ -1,0 +1,122 @@
+@page "/dashboard"
+@rendermode InteractiveServer
+@using SowedoIntakeAgent.Models
+@using SowedoIntakeAgent.Services
+@inject IntakeStore Store
+
+<PageTitle>SOWEDO — Lead Dashboard</PageTitle>
+
+<div class="dashboard">
+    <header class="dash-header">
+        <div class="dash-header-left">
+            <img src="images/logo.svg" alt="SOWEDO" class="logo" />
+            <h1>Lead Dashboard</h1>
+        </div>
+        <a href="/" class="back-link">← Nieuwe intake</a>
+    </header>
+
+    <div class="dash-content">
+        @if (!_intakes.Any())
+        {
+            <div class="empty-state">
+                <div class="empty-icon">📋</div>
+                <h2>Nog geen intakes</h2>
+                <p>Afgeronde intake gesprekken verschijnen hier automatisch.</p>
+            </div>
+        }
+        else
+        {
+            <div class="cards-grid">
+                @foreach (var intake in _intakes)
+                {
+                    <div class="intake-card @(intake == _selected ? "selected" : "")" @onclick="() => Toggle(intake)">
+                        <div class="card-top">
+                            <div class="card-info">
+                                <h3>@intake.CompanyName</h3>
+                                <span class="card-industry">@intake.Industry</span>
+                                @if (!string.IsNullOrEmpty(intake.ContactName))
+                                {
+                                    <span class="card-contact">👤 @intake.ContactName</span>
+                                }
+                                @if (!string.IsNullOrEmpty(intake.ContactEmail))
+                                {
+                                    <span class="card-contact">✉️ @intake.ContactEmail</span>
+                                }
+                                @if (!string.IsNullOrEmpty(intake.ContactPhone))
+                                {
+                                    <span class="card-contact">📞 @intake.ContactPhone</span>
+                                }
+                                <span class="card-date">@intake.CompletedAt.ToString("dd MMM yyyy · HH:mm")</span>
+                            </div>
+                            <div class="card-score-circle @intake.LeadStatus.ToLower()">
+                                <span class="score-num">@intake.OverallLeadScore</span>
+                                <span class="score-label">/ 10</span>
+                            </div>
+                        </div>
+
+                        <div class="card-badges">
+                            <span class="badge complexity @intake.Complexity.ToLower()">@intake.Complexity</span>
+                            <span class="badge lead-status @intake.LeadStatus.ToLower()">@intake.LeadStatus Lead</span>
+                        </div>
+
+                        <div class="card-bars">
+                            <div class="bar-row">
+                                <span>Haalbaarheid</span>
+                                <div class="bar"><div class="bar-fill" style="width:@(intake.FeasibilityScore * 10)%"></div></div>
+                                <span class="bar-val">@intake.FeasibilityScore</span>
+                            </div>
+                            <div class="bar-row">
+                                <span>Impact</span>
+                                <div class="bar"><div class="bar-fill" style="width:@(intake.ImpactScore * 10)%"></div></div>
+                                <span class="bar-val">@intake.ImpactScore</span>
+                            </div>
+                            <div class="bar-row">
+                                <span>Urgentie</span>
+                                <div class="bar"><div class="bar-fill" style="width:@(intake.UrgencyScore * 10)%"></div></div>
+                                <span class="bar-val">@intake.UrgencyScore</span>
+                            </div>
+                        </div>
+
+                        @if (intake == _selected)
+                        {
+                            <div class="card-detail">
+                                <div class="detail-section">
+                                    <h4>Bedrijfsprofiel</h4>
+                                    <p><strong>Omvang:</strong> @intake.CompanySize</p>
+                                    <p><strong>Budget:</strong> @intake.Budget</p>
+                                </div>
+                                <div class="detail-section">
+                                    <h4>Probleemanalyse</h4>
+                                    <p>@intake.ProblemAnalysis</p>
+                                </div>
+                                <div class="detail-section">
+                                    <h4>Aanbevolen oplossing</h4>
+                                    <p>@intake.RecommendedSolution</p>
+                                </div>
+                                <div class="detail-section">
+                                    <h4>Vervolgstappen</h4>
+                                    <p>@intake.NextSteps</p>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<IntakeResult> _intakes = new();
+    private IntakeResult? _selected;
+
+    protected override void OnInitialized()
+    {
+        _intakes = Store.GetAll();
+    }
+
+    private void Toggle(IntakeResult intake)
+    {
+        _selected = _selected == intake ? null : intake;
+    }
+}

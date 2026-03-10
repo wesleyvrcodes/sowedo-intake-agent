@@ -1,0 +1,35 @@
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    background: #000B1F;
+    color: #fff;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+}
+
+#blazor-error-ui {
+    background: #000B1F;
+    color: #d9f048;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.3);
+    display: none;
+    left: 0;
+    padding: 16px 24px;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    text-align: center;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    color: rgba(255,255,255,0.5);
+    margin-left: 16px;
+}
